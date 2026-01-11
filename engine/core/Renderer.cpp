@@ -18,6 +18,7 @@
 #include <bx/bx.h>
 #include <bgfx/platform.h>
 #include "GLFW/glfw3.h"
+#include <core/Paths.h>
 
 namespace
 {
@@ -234,7 +235,7 @@ void Renderer::init_default_view(Window* window) {
 
 bool Renderer::init_selection_program() {
     // TODO: make this configurable instead of hard-coded path.
-    std::string baseDir = "C:/Users/aruem/Desktop/game-engine/shaders/post/selection";
+    std::string baseDir = (ROOT / "shaders/post/selection").string();
     std::string vsPath  = baseDir + "/vs_selection.bin";
     std::string fsPath  = baseDir + "/fs_selection.bin";
 
@@ -278,7 +279,7 @@ void Renderer::init_post_process_chain() {
 
 bool Renderer::init_picking_program() {
     // Adjust path to match your project layout
-    std::string baseDir = "C:/Users/aruem/Desktop/game-engine/shaders/post/picking";
+    std::string baseDir = (ROOT / "shaders/post/picking").string();
     std::string vsPath  = baseDir + "/vs_pick.bin";
     std::string fsPath  = baseDir + "/fs_pick.bin";
 

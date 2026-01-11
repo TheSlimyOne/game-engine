@@ -6,16 +6,16 @@
 #include <vector>
 #include <random>
 #include <cmath>
-
+#include <core/Paths.h>
 
 void start_test(World& world) {
     // 3. Create cube
     Entity cube = world.create_entity();
     world.add_component(cube, ComponentType::Transform);
     world.add_component(cube, ComponentType::Model);
-    world.load_mesh(cube, "C:\\Users\\aruem\\Desktop\\3D Models\\Kirby\\Kirby.fbx");
+    world.load_mesh(cube, (ROOT / "models/Kirby/Kirby.fbx").string());
     world.load_material(cube, "cel");
-    world.load_texture(cube, "C:\\Users\\aruem\\Desktop\\3D Models\\Kirby\\Kirby_BaseColor.png");
+    world.load_texture(cube, (ROOT / "models/Kirby/Kirby_BaseColor.png").string());
 
 
     world.set_rotation(cube, Vec3(1.0, 0.0, 0.0), radians(90.0));

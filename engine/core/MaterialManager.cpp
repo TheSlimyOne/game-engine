@@ -7,6 +7,7 @@
 #include <filesystem>
 #include <fstream>
 #include <vector>
+#include <core/Paths.h>
 
 #include <shader/ShaderUtils.h>
 #include <materials/Material.h>
@@ -18,7 +19,7 @@
 namespace fs = std::filesystem;
 
 std::shared_ptr<Material> MaterialManager::load_from_id(const std::string &material_id) {
-    fs::path shader_dir = "C:/Users/aruem/Desktop/game-engine/shaders";
+    fs::path shader_dir = ROOT / "shaders";
     fs::path mat_dir = shader_dir / material_id;
 
     if (!fs::exists(mat_dir) || !fs::is_directory(mat_dir)) {

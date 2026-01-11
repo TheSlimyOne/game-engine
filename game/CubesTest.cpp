@@ -6,6 +6,7 @@
 #include <vector>
 #include <random>
 #include <cmath>
+#include <core/Paths.h>
 
 // Configuration
 constexpr int CUBE_COUNT = 1000;
@@ -49,7 +50,7 @@ void cubes_update(World& world, float dt, State& data) {
             world.add_component(cube, ComponentType::Transform);
             world.add_component(cube, ComponentType::Model);
 
-            world.load_mesh(cube, "C:/Users/aruem/Desktop/game-engine/models/Cube.fbx");
+            world.load_mesh(cube, (ROOT / "models/Cube.fbx").string());
             world.load_material(cube, "color");
 
             float r = distRadius(gen);

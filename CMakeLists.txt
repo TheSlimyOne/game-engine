@@ -80,6 +80,20 @@ if(MSVC AND TARGET Jolt)
             MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>DLL")
 endif()
 
+# =========== jolt fix ===========
+if(MSVC AND TARGET Jolt)
+    # Force dynamic runtime
+    set_property(TARGET Jolt PROPERTY
+            MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>DLL"
+    )
+
+    # Stop Windows SDK warnings from breaking the build
+    target_compile_options(Jolt PRIVATE
+            /wd4865     # enum underlying type migration warning
+            /Wv:18      # freeze warning set to VS2019-era
+    )
+endif()
+
 # =========== Shader Compilation ===========
 
 # Define the main source directory for shaders.
@@ -112,24 +126,24 @@ foreach(VARYING_FILE ${VARYING_FILES})
         # Extract the single file from the list to avoid semicolon errors
         list(GET VERTEX_SHADER_LIST 0 VERTEX_SHADER_FILE)
 
-        get_filename_component(VS_NAME ${VERTEX_SHADER_FILE} NAME_WE)
-        set(VS_OUTPUT_BINARY "${SHADER_OUTPUT_DIR}/${VS_NAME}.bin")
+    get_filename_component(VS_NAME ${VERTEX_SHADER_FILE} NAME_WE)
+    set(VS_OUTPUT_BINARY "${SHADER_OUTPUT_DIR}/${VS_NAME}.bin")
 
-        add_custom_command(
-                OUTPUT ${VS_OUTPUT_BINARY}
+    add_custom_command(
+            OUTPUT ${VS_OUTPUT_BINARY}
                 # We use the target 'shaderc' here. CMake will automatically use the built executable path.
                 COMMAND shaderc
-                -f ${VERTEX_SHADER_FILE}
-                -o ${VS_OUTPUT_BINARY}
-                --type vertex
+            -f ${VERTEX_SHADER_FILE}
+            -o ${VS_OUTPUT_BINARY}
+            --type vertex
                 --varyingdef ${VARYING_FILE} # <--- THIS FIXES YOUR ERROR
                 --platform windows
                 --profile vs_5_0
                 -i ${bgfx_SOURCE_DIR}/bgfx/src
                 DEPENDS ${VERTEX_SHADER_FILE} ${VARYING_FILE} shaderc # <--- Added shaderc dependency
-                COMMENT "Compiling Vertex Shader: ${REL_DIR}/${VS_NAME}.sc"
-        )
-        list(APPEND SHADER_BINARIES ${VS_OUTPUT_BINARY})
+            COMMENT "Compiling Vertex Shader: ${REL_DIR}/${VS_NAME}.sc"
+    )
+    list(APPEND SHADER_BINARIES ${VS_OUTPUT_BINARY})
     endif()
 
     # --- Compile Fragment Shader ---
@@ -138,8 +152,8 @@ foreach(VARYING_FILE ${VARYING_FILES})
         # Extract single file
         list(GET FRAGMENT_SHADER_LIST 0 FRAGMENT_SHADER_FILE)
 
-        get_filename_component(FS_NAME ${FRAGMENT_SHADER_FILE} NAME_WE)
-        set(FS_OUTPUT_BINARY "${SHADER_OUTPUT_DIR}/${FS_NAME}.bin")
+    get_filename_component(FS_NAME ${FRAGMENT_SHADER_FILE} NAME_WE)
+    set(FS_OUTPUT_BINARY "${SHADER_OUTPUT_DIR}/${FS_NAME}.bin")
 
         add_custom_command(
                 OUTPUT ${FS_OUTPUT_BINARY}
@@ -212,6 +226,8 @@ target_include_directories(glad PUBLIC
         ${GLAD_DIR}/include
 )
 
+# =========== Compile Definitions ===========
+add_compile_definitions(GAME_ENGINE_ROOT="${CMAKE_SOURCE_DIR}")
 
 # =========== Linking ===========
 target_link_libraries(Game PRIVATE bgfx glfw assimp imgui glad Jolt)

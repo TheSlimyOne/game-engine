@@ -5,7 +5,7 @@
 
 #include <bgfx/bgfx.h>
 #include <iostream>
-
+#include <core/Paths.h>
 
 OutlineEffect::OutlineEffect(FullscreenQuad& quad, uint16_t width, uint16_t height) : m_quad(quad)
 {
@@ -14,7 +14,7 @@ OutlineEffect::OutlineEffect(FullscreenQuad& quad, uint16_t width, uint16_t heig
 
     // Adjust this to your actual path layout
     // e.g. shaders/post/outline/vs_outline.bin, fs_outline.bin
-    std::string baseDir = "C:/Users/aruem/Desktop/game-engine/shaders/post/outline";
+    std::string baseDir = (ROOT / "shaders/post/outline").string();
     std::string vsPath  = baseDir + "/vs_outline.bin";
     std::string fsPath  = baseDir + "/fs_outline.bin";
 
@@ -102,11 +102,15 @@ void OutlineEffect::apply(PostProcessContext& ctx, bgfx::TextureHandle srcColor,
     float thicknessData[4] = { m_thickness, 0.0f, 0.0f, 0.0f };
     bgfx::setUniform(u_outlineThickness, thicknessData);
 
+    constexpr uint64_t maskSamplerFlags =
+    BGFX_SAMPLER_U_CLAMP |
+    BGFX_SAMPLER_V_CLAMP;
+
     // Bind scene color to slot 0
     bgfx::setTexture(0, u_sceneColor, srcColor);
     // Bind mask only if we have it
     if (hasMask) {
-        bgfx::setTexture(1, u_maskTex, ctx.selectionMask);
+        bgfx::setTexture(1, u_maskTex, ctx.selectionMask, maskSamplerFlags);
     } else {
         // If no mask exists, bind the Scene Color (or a dummy black texture) to Slot 1
         // just so D3D12 doesn't crash/abort due to unbound descriptor.

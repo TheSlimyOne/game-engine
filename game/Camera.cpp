@@ -1,6 +1,6 @@
 #include <Engine.h>
 #include <iostream>
-
+#include <core/Paths.h>
 #include <vector>
 #include <random>
 
@@ -27,7 +27,7 @@ void camera_startup(World& world) {
     world.add_component(cp, ComponentType::Transform);
     world.add_component(cp, ComponentType::Model);
     world.set_rotation(cp, Vec3(radians(-90.0f), 0.0f, 0.0f));
-    world.load_mesh(cp, "C:/Users/aruem/Desktop/game-engine/models/Plane.fbx");
+    world.load_mesh(cp, (ROOT / "models/Plane.fbx").string());
     world.load_material(cp, "coordinate_plane");
     world.set_backface_culling(cp, false);
     world.set_alpha_blending(cp, true);
