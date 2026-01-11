@@ -7,6 +7,7 @@ class Window;
 
 class PropertiesPanel;
 class EntitiesPanel;
+class ProfilerPanel;
 
 class Editor {
 public:
@@ -24,6 +25,7 @@ private:
     std::unique_ptr<Window> m_window;
     std::unique_ptr<PropertiesPanel> m_properties_panel;
     std::unique_ptr<EntitiesPanel> m_entities_panel;
+    std::unique_ptr<ProfilerPanel> m_profiler_panel;
 };
 
 #endif //GAME_EDITOR_H

@@ -10,7 +10,7 @@
 #include <functional>
 
 
-class InputManager {
+class alignas(16) InputManager {
 public:
     InputManager();
     ~InputManager() = default;
@@ -36,6 +36,8 @@ public:
 
     Vec2 get_mouse_position();
     Vec2 get_mouse_delta();
+
+    void get_mouse_position_int(int& x, int& y) const;
 
 private:
     bool is_compound_active(const CompoundBinding& compound);
@@ -66,6 +68,8 @@ private:
     Vec2 m_current_mouse_pos;
     Vec2 m_previous_mouse_pos;
     Vec2 m_mouse_delta;
+
+    bool m_startup_frame = true; // This needs to be placed after Vec2 bc of memory alignment
 };
 
 #endif //GAME_INPUTMANAGER_H

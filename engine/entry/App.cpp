@@ -1,7 +1,10 @@
+// App.cpp
+
 #include "App.h"
 
 #include <core/Systems.h>
-#include<iostream>
+#include <iostream>
+#include <profiler/Profiler.h>
 
 App::App(const std::shared_ptr<World> &world)
     : m_world(world)
@@ -48,19 +51,69 @@ void App::tick() {
         return;
     }
 
-    // Query input actions
-    m_world->query_inputs();
+    Profiler::instance().new_frame();
+    PROFILE_SCOPE_ORDER("App Tick", 1);
 
-    // Execute "OnUpdate" callbacks
-    Systems::fire_update(*m_world, m_renderer->get_delta_time());
+    // 1. Query input actions
+    {
+        PROFILE_SCOPE_ORDER("Query Inputs", 2);
+        m_world->query_inputs();
+    }
 
-    // Execute buffered mutate commands for the world
-    m_world->execute_commands();
+    // 2. Calculate fixed time intervals
+    float frame_time = m_renderer->get_delta_time(); // Get raw messy time
+    Profiler::instance().add_frame_time(frame_time); // Record accurate timing for FPS
 
-    // Draw the frame
-    m_renderer->begin_frame(); // Begin the frame
-    m_renderer->draw_frame(*m_world);
-    m_renderer->end_frame(); // End the frame
+    if (frame_time > 0.25f) frame_time = 0.25f; // Cap it to prevent "Spiral of Death" if the game freezes
+    m_accumulator += frame_time; // Add to time bucket
+
+    {
+        PROFILE_SCOPE_ORDER("Frame Catchup", 3);
+
+        int fixedStepsThisFrame = 0;
+
+        // Eat time from the bucket in fixed bites
+        // This while loop ensures logic ALWAYS runs at exactly FIXED_DT
+        while (m_accumulator >= FIXED_DT) {
+            ++fixedStepsThisFrame;
+            // 3. Run game logic: execute "OnUpdate" callbacks
+            // Pass the FIXED time to your update, not the variable frame_time
+            {
+                PROFILE_SCOPE_ORDER("Fire Updates", 4);
+                Systems::fire_update(*m_world, static_cast<float>(FIXED_DT));
+            }
+
+            // 4. Execute buffered mutate commands for the world
+            {
+                PROFILE_SCOPE_ORDER("Execute Commands", 5);
+                m_world->execute_commands();
+            }
+
+            // 5. Resolve the hierarchy
+            {
+                PROFILE_SCOPE_ORDER("Resolve Hierarchy Transforms", 6);
+                m_world->update_transforms();
+            }
+
+            m_accumulator -= FIXED_DT;
+        }
+
+        // After the loop, record the *count* as a profiler value
+        Profiler::instance().set_fixed_step_stats(
+            fixedStepsThisFrame,
+            FIXED_DT
+        );
+    }
+
+
+
+    // 6. Draw the frame
+    {
+        PROFILE_SCOPE_ORDER("Draw Frame", 7);
+        m_renderer->begin_frame();
+        m_renderer->draw_frame(*m_world);
+        m_renderer->end_frame(*m_world);
+    }
 }
 
 bool App::should_close() {

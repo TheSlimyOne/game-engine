@@ -1,3 +1,5 @@
+// MeshManager.cpp
+
 #include "MeshManager.h"
 #include "Vertex.h"
 #include "MeshData.h"
@@ -36,28 +38,55 @@ std::shared_ptr<MeshData> MeshManager::load(const std::string &file_path) {
 }
 
 std::shared_ptr<MeshData> MeshManager::load_from_file(const std::string &file_path) {
-    Assimp::Importer importer;
+     Assimp::Importer importer;
+
+    // aiProcess_GenNormals ensures mNormals exists.
+    // aiProcess_FlipUVs matches OpenGL/BGFX UV convention.
     const aiScene* scene = importer.ReadFile(
         file_path,
         aiProcess_Triangulate |
         aiProcess_FlipUVs |
-        aiProcess_GenNormals);
+        aiProcess_GenNormals |
+        aiProcess_JoinIdenticalVertices
+    );
 
     if (!scene || scene->mFlags & AI_SCENE_FLAGS_INCOMPLETE || !scene->mRootNode) {
         std::cerr << "Assimp Error: " << importer.GetErrorString() << std::endl;
         return nullptr;
     }
 
-    // For simplicity, process the first mesh in the file
     aiMesh* mesh = scene->mMeshes[0];
 
-    // Process vertices and indices
     std::vector<Vertex> vertices;
+    vertices.reserve(mesh->mNumVertices); // optimization
+
     for (uint32_t i = 0; i < mesh->mNumVertices; i++) {
         Vertex vertex;
+
+        // 1. Copy Position
         vertex.x = mesh->mVertices[i].x;
         vertex.y = mesh->mVertices[i].y;
         vertex.z = mesh->mVertices[i].z;
+
+        // 2. Copy Normals (MISSING IN YOUR CODE)
+        // Assimp guarantees this exists because of aiProcess_GenNormals
+        if (mesh->HasNormals()) {
+            vertex.nx = mesh->mNormals[i].x;
+            vertex.ny = mesh->mNormals[i].y;
+            vertex.nz = mesh->mNormals[i].z;
+        } else {
+            vertex.nx = 0.0f; vertex.ny = 1.0f; vertex.nz = 0.0f;
+        }
+
+        // 3. Copy UVs / Texture Coordinates (MISSING IN YOUR CODE)
+        // Check if texture channel 0 exists
+        if (mesh->HasTextureCoords(0)) {
+            vertex.u = mesh->mTextureCoords[0][i].x;
+            vertex.v = mesh->mTextureCoords[0][i].y;
+        } else {
+            vertex.u = 0.0f;
+            vertex.v = 0.0f;
+        }
 
         vertices.push_back(vertex);
     }
@@ -66,13 +95,14 @@ std::shared_ptr<MeshData> MeshManager::load_from_file(const std::string &file_pa
     for (uint32_t i = 0; i < mesh->mNumFaces; i++) {
         aiFace face = mesh->mFaces[i];
         for (uint32_t j = 0; j < face.mNumIndices; j++) {
-            indices.push_back(face.mIndices[j]);
+            indices.push_back(static_cast<uint16_t>(face.mIndices[j]));
         }
     }
 
-    // Create BGFX buffers
     auto layout = Vertex::vertex_layout();
     auto mesh_data = std::make_shared<MeshData>();
+
+    // Copy to BGFX memory
     mesh_data->vbh = bgfx::createVertexBuffer(bgfx::copy(vertices.data(), vertices.size() * sizeof(Vertex)), layout);
     mesh_data->ibh = bgfx::createIndexBuffer(bgfx::copy(indices.data(), indices.size() * sizeof(uint16_t)));
 

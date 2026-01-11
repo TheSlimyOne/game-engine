@@ -24,6 +24,12 @@ void InputManager::set_window(const std::shared_ptr<Window> &window) {
         glfwSetMouseButtonCallback(m_window->get_glfw_window(), mouse_button_callback);
         glfwSetCursorPosCallback(m_window->get_glfw_window(), cursor_position_callback);
         glfwSetScrollCallback(m_window->get_glfw_window(), scroll_callback);
+
+        // Seed the initial position immediately
+        double x, y;
+        glfwGetCursorPos(m_window->get_glfw_window(), &x, &y);
+        m_current_mouse_pos = Vec2(static_cast<float>(x), static_cast<float>(y));
+        m_previous_mouse_pos = m_current_mouse_pos;
     }
 }
 
@@ -52,11 +58,18 @@ void InputManager::set_cursor_mode(CursorMode mode) {
 }
 
 void InputManager::query_inputs() {
+    // If this is the first time we are querying inputs, sync the previous
+    // position to the current position to prevent a huge initial delta.
+    if (m_startup_frame) {
+        m_previous_mouse_pos = m_current_mouse_pos;
+        m_startup_frame = false;
+    }
+
     // Process actions and trigger callbacks
     Vec2 raw_delta = m_current_mouse_pos - m_previous_mouse_pos;
 
     const float epsilon = 2.0f;
-    if (glm::length(raw_delta) < epsilon) {
+    if (raw_delta.norm() < epsilon) {
         m_mouse_delta = Vec2(0.0f);
     } else {
         const float sensitivity = 0.1f;
@@ -207,6 +220,11 @@ Vec2 InputManager::get_mouse_position() {
 
 Vec2 InputManager::get_mouse_delta() {
     return m_mouse_delta;
+}
+
+void InputManager::get_mouse_position_int(int& x, int& y) const {
+    x = static_cast<int>(m_current_mouse_pos.x);
+    y = static_cast<int>(m_current_mouse_pos.y);
 }
 
 bool InputManager::is_compound_active(const CompoundBinding &compound) {

@@ -1,3 +1,5 @@
+// PropertiesPanel.cpp
+
 #include "PropertiesPanel.h"
 #include <imgui.h>
 

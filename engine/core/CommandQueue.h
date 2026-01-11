@@ -1,3 +1,5 @@
+// CommandQueue.h
+
 #ifndef GAME_COMMANDQUEUE_H
 #define GAME_COMMANDQUEUE_H
 
@@ -5,26 +7,59 @@
 #include <memory>
 #include <mutex>
 #include <optional>
+#include <variant>
 #include <queue>
 #include <vector>
+#include "Commands.h"
 
-class ICommand;
+using Command = std::variant<
+    CmdInsertEntity,
+    CmdRegisterTransform,
+    CmdAddCameraComponent,
+    CmdAddModelComponent,
+    CmdSetActiveCamera,
+    CmdSetPosition,
+    CmdSetRotationQuat,
+    CmdSetScale,
+    CmdSetParent,
+    CmdLoadModelMaterial,
+    CmdLoadModelMesh,
+    CmdLoadModelTexture,
+    CmdSetBackfaceCulling,
+    CmdSetAlphaBlending
+>;
 
 class CommandQueue {
 public:
-    using Command = std::function<void()>;
-    CommandQueue() = default;
+    CommandQueue() {
+        m_commands.reserve(1024); // tune to your typical per-frame command count
+    }
 
-    void submit(Command cmd);
-    Command wait_and_pop();
-    std::optional<Command> try_pop();
-    std::vector<Command> drain();
-    bool is_empty();
+    void submit(const Command& cmd) {
+        m_commands.push_back(cmd);
+    }
+
+    void submit(Command&& cmd) {
+        m_commands.push_back(std::move(cmd));
+    }
+
+    bool is_empty() const {
+        return m_commands.empty();
+    }
+
+    // The important one: iterate and clear
+    template <typename Func>
+    void for_each_and_clear(Func&& f) {
+        for (auto& cmd : m_commands) {
+            f(cmd);
+        }
+        m_commands.clear();
+    }
+
+    std::size_t size() const { return m_commands.size(); }
 
 private:
-    mutable std::mutex m_mutex;
-    std::queue<Command> m_queue;
-    std::condition_variable m_condition;
+    std::vector<Command> m_commands;
 };
 
 

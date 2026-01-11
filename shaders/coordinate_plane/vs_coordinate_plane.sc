@@ -3,17 +3,19 @@ $output v_worldPos
 
 #include <bgfx_shader.sh>
 
+uniform vec4 u_gridPlane;
+
 void main()
 {
-    const float gridScale = 1000.0;
-    vec3 scaled_position = a_position * gridScale;
+    float planeScale = u_gridPlane.x;
 
-    // Calculate the world position using the NEW scaled position
+    // Scale the plane in object space
+    vec3 scaled_position = a_position * planeScale;
+
+    // Standard bgfx pattern
     vec4 worldPos = mul(u_model[0], vec4(scaled_position, 1.0));
-    
-    // Pass world position to the fragment shader
+
     v_worldPos = worldPos.xyz;
-    
-    // Calculate the final screen position
+
     gl_Position = mul(u_viewProj, worldPos);
 }

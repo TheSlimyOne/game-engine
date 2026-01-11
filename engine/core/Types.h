@@ -1,20 +1,20 @@
+// Types.h
+
 #ifndef GAME_TYPES_H
 #define GAME_TYPES_H
 
-#include <glm/glm.hpp>
-#include <glm/gtc/quaternion.hpp>
-#include <glm/gtc/matrix_transform.hpp>
+// #include <glm/glm.hpp>
+// #include <glm/gtc/quaternion.hpp>
+// #include <glm/gtc/matrix_transform.hpp>
 #include <vector>
 #include <functional>
 #include <string>
+#include <math/Math.h>
 
-using Vec3 = glm::vec3;
-using Vec2 = glm::vec2;
-using Vec4 = glm::vec4;
-using Quat = glm::quat;
-using Mat4 = glm::mat4;
-
+inline size_t MAX_ENTITIES = 500000;
 using Entity = uint32_t;
+using EntityIndex = uint32_t;
+static const EntityIndex NO_ENTITY = ~0u;
 
 enum class ProjectionType {
     Perspective,

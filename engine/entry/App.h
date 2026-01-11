@@ -1,3 +1,5 @@
+// App.h
+
 #ifndef GAME_APP_H
 #define GAME_APP_H
 
@@ -20,6 +22,8 @@ private:
     void shutdown();
 
     bool m_initialized = false;
+    float m_accumulator = 0.0;
+    const float FIXED_DT = 1.0 / 144.0;
 
     // Pointers to engine subsystems
     std::shared_ptr<Window> m_window;

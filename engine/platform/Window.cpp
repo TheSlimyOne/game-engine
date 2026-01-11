@@ -5,8 +5,6 @@
 #define GLFW_INCLUDE_NONE
 #include <GLFW/glfw3.h>
 
-#include "glm/fwd.hpp"
-
 // Include the platform-specific native window handle header
 #if BX_PLATFORM_LINUX
 #define GLFW_EXPOSE_NATIVE_X11

@@ -1,5 +1,6 @@
+// MaterialManager.cpp
+
 #include "MaterialManager.h"
-#include "Material.h"
 #include <bgfx/bgfx.h>
 #include <memory>
 #include <iostream>
@@ -7,52 +8,14 @@
 #include <fstream>
 #include <vector>
 
+#include <shader/ShaderUtils.h>
+#include <materials/Material.h>
+#include <materials/ColorMaterial.h>
+#include <materials/CoordinatePlaneMaterial.h>
+#include <materials/CelMaterial.h>
+
+
 namespace fs = std::filesystem;
-
-std::shared_ptr<Material> MaterialManager::load(const std::string &material_id) {
-    auto it  = m_material_cache.find(material_id);
-    if (it != m_material_cache.end()) {
-        if (auto shared = it->second.lock()) {
-            return shared;
-        } else {
-            m_material_cache.erase(it); // clean up expired weak pointers
-        }
-    }
-
-    auto material = load_from_id(material_id);
-    if (material) {
-        m_material_cache[material_id] = material;
-    }
-
-    return material;
-}
-
-
-bgfx::ShaderHandle MaterialManager::load_shader_bin(const std::string &file_path) {
-    std::ifstream file(file_path, std::ios::binary | std::ios::ate);
-    if (!file) {
-        std::cerr << "Failed to open shader: " << file_path << std::endl;
-        return BGFX_INVALID_HANDLE;
-    }
-
-    const std::streamsize file_size = file.tellg();
-    if (file_size <= 0) {
-        std::cerr << "Shader is empty or unreadable: " << file_path << std::endl;
-        return BGFX_INVALID_HANDLE;
-    }
-    file.seekg(0, std::ios::beg);
-
-    // Allocate +1 byte for null terminator
-    std::vector<uint8_t> buffer(static_cast<size_t>(file_size) + 1u);
-    if (!file.read(reinterpret_cast<char*>(buffer.data()), file_size)) {
-        std::cerr << "Failed to read shader: " << file_path << std::endl;
-        return BGFX_INVALID_HANDLE;
-    }
-    buffer[static_cast<size_t>(file_size)] = '\0';
-
-    const bgfx::Memory* mem = bgfx::copy(buffer.data(), static_cast<uint32_t>(buffer.size()));
-    return bgfx::createShader(mem);
-}
 
 std::shared_ptr<Material> MaterialManager::load_from_id(const std::string &material_id) {
     fs::path shader_dir = "C:/Users/aruem/Desktop/game-engine/shaders";
@@ -71,8 +34,8 @@ std::shared_ptr<Material> MaterialManager::load_from_id(const std::string &mater
         return nullptr;
     }
 
-    auto vsh = load_shader_bin(vs_path.string());
-    auto fsh = load_shader_bin(fs_path.string());
+    auto vsh = ShaderUtils::load_shader_bin(vs_path.string());
+    auto fsh = ShaderUtils::load_shader_bin(fs_path.string());
     if (!bgfx::isValid(vsh) || !bgfx::isValid(fsh)) {
         if (bgfx::isValid(vsh)) bgfx::destroy(vsh);
         if (bgfx::isValid(fsh)) bgfx::destroy(fsh);
@@ -88,13 +51,18 @@ std::shared_ptr<Material> MaterialManager::load_from_id(const std::string &mater
         return nullptr;
     }
 
-    auto mat = std::make_shared<Material>();
-    mat->vsh = vsh;
-    mat->fsh = fsh;
-    mat->program = prog;
+    std::shared_ptr<Material> material;
+
+    if (material_id == "color") {
+        material = std::make_shared<ColorMaterial>(vsh, fsh, prog);
+    } else if (material_id == "coordinate_plane") {
+        material = std::make_shared<CoordinatePlaneMaterial>(vsh, fsh, prog);
+    } else if (material_id == "cel") {
+        material = std::make_shared<CelMaterial>(vsh, fsh, prog);
+    }
 
 
-    return mat;
+    return material;
 }
 
 

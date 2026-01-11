@@ -42,13 +42,6 @@ FetchContent_Declare(
     GIT_TAG 3.4
 )
 
-# glm
-FetchContent_Declare(
-    glm
-    GIT_REPOSITORY https://github.com/g-truc/glm.git
-    GIT_TAG 1.0.1
-)
-
 # assimp
 FetchContent_Declare(
     assimp
@@ -71,7 +64,7 @@ FetchContent_Declare(
     SOURCE_SUBDIR Build
 )
 
-FetchContent_MakeAvailable(bgfx glfw glm assimp imgui joltphysics)
+FetchContent_MakeAvailable(bgfx glfw assimp imgui joltphysics)
 
 # Add Jolt explicitly so our cache options apply and we can tweak its target
 FetchContent_GetProperties(joltphysics)
@@ -103,8 +96,8 @@ foreach(VARYING_FILE ${VARYING_FILES})
     get_filename_component(SHADER_DIR ${VARYING_FILE} DIRECTORY)
 
     # Find the vertex and fragment shaders in the same directory.
-    file(GLOB VERTEX_SHADER_FILE "${SHADER_DIR}/vs_*.sc")
-    file(GLOB FRAGMENT_SHADER_FILE "${SHADER_DIR}/fs_*.sc")
+    file(GLOB VERTEX_SHADER_LIST "${SHADER_DIR}/vs_*.sc")
+    file(GLOB FRAGMENT_SHADER_LIST "${SHADER_DIR}/fs_*.sc")
 
     # MODIFICATION: Set the output directory to be the same as the source directory.
     set(SHADER_OUTPUT_DIR ${SHADER_DIR})
@@ -113,48 +106,60 @@ foreach(VARYING_FILE ${VARYING_FILES})
     file(RELATIVE_PATH REL_DIR ${MAIN_SHADER_SRC_DIR} ${SHADER_DIR})
 
     # --- Compile Vertex Shader ---
-    get_filename_component(VS_NAME ${VERTEX_SHADER_FILE} NAME_WE)
-    set(VS_OUTPUT_BINARY "${SHADER_OUTPUT_DIR}/${VS_NAME}.bin")
-    add_custom_command(
-            OUTPUT ${VS_OUTPUT_BINARY}
-            COMMAND shaderc # Use the target name directly
-            -f ${VERTEX_SHADER_FILE}
-            -o ${VS_OUTPUT_BINARY}
-            --type vertex
-            --varyingdef ${VARYING_FILE}
-            --platform windows # Change for other platforms (linux, osx)
-            --profile vs_5_0   # Change profile if needed
-            -i ${bgfx_SOURCE_DIR}/bgfx/src # CORRECTED: Appended /bgfx/src
-            DEPENDS ${VERTEX_SHADER_FILE} ${VARYING_FILE}
-            COMMENT "Compiling Vertex Shader: ${REL_DIR}/${VS_NAME}.sc"
-    )
-    # Add the output file path to our list.
-    list(APPEND SHADER_BINARIES ${VS_OUTPUT_BINARY})
+    # Check if we actually found a file
+    list(LENGTH VERTEX_SHADER_LIST VS_COUNT)
+    if(VS_COUNT GREATER 0)
+        # Extract the single file from the list to avoid semicolon errors
+        list(GET VERTEX_SHADER_LIST 0 VERTEX_SHADER_FILE)
+
+        get_filename_component(VS_NAME ${VERTEX_SHADER_FILE} NAME_WE)
+        set(VS_OUTPUT_BINARY "${SHADER_OUTPUT_DIR}/${VS_NAME}.bin")
+
+        add_custom_command(
+                OUTPUT ${VS_OUTPUT_BINARY}
+                # We use the target 'shaderc' here. CMake will automatically use the built executable path.
+                COMMAND shaderc
+                -f ${VERTEX_SHADER_FILE}
+                -o ${VS_OUTPUT_BINARY}
+                --type vertex
+                --varyingdef ${VARYING_FILE} # <--- THIS FIXES YOUR ERROR
+                --platform windows
+                --profile vs_5_0
+                -i ${bgfx_SOURCE_DIR}/bgfx/src
+                DEPENDS ${VERTEX_SHADER_FILE} ${VARYING_FILE} shaderc # <--- Added shaderc dependency
+                COMMENT "Compiling Vertex Shader: ${REL_DIR}/${VS_NAME}.sc"
+        )
+        list(APPEND SHADER_BINARIES ${VS_OUTPUT_BINARY})
+    endif()
 
     # --- Compile Fragment Shader ---
-    get_filename_component(FS_NAME ${FRAGMENT_SHADER_FILE} NAME_WE)
-    set(FS_OUTPUT_BINARY "${SHADER_OUTPUT_DIR}/${FS_NAME}.bin")
-    add_custom_command(
-            OUTPUT ${FS_OUTPUT_BINARY}
-            COMMAND shaderc # Use the target name directly
-            -f ${FRAGMENT_SHADER_FILE}
-            -o ${FS_OUTPUT_BINARY}
-            --type fragment
-            --varyingdef ${VARYING_FILE}
-            --platform windows # Change for other platforms (linux, osx)
-            --profile ps_5_0   # Change profile if needed
-            -i ${bgfx_SOURCE_DIR}/bgfx/src # CORRECTED: Appended /bgfx/src
-            DEPENDS ${FRAGMENT_SHADER_FILE} ${VARYING_FILE}
-            COMMENT "Compiling Fragment Shader: ${REL_DIR}/${FS_NAME}.sc"
-    )
-    # Add the output file path to our list.
-    list(APPEND SHADER_BINARIES ${FS_OUTPUT_BINARY})
+    list(LENGTH FRAGMENT_SHADER_LIST FS_COUNT)
+    if(FS_COUNT GREATER 0)
+        # Extract single file
+        list(GET FRAGMENT_SHADER_LIST 0 FRAGMENT_SHADER_FILE)
+
+        get_filename_component(FS_NAME ${FRAGMENT_SHADER_FILE} NAME_WE)
+        set(FS_OUTPUT_BINARY "${SHADER_OUTPUT_DIR}/${FS_NAME}.bin")
+
+        add_custom_command(
+                OUTPUT ${FS_OUTPUT_BINARY}
+                COMMAND shaderc
+                -f ${FRAGMENT_SHADER_FILE}
+                -o ${FS_OUTPUT_BINARY}
+                --type fragment
+                --varyingdef ${VARYING_FILE} # <--- THIS FIXES YOUR ERROR
+                --platform windows
+                --profile ps_5_0
+                -i ${bgfx_SOURCE_DIR}/bgfx/src
+                DEPENDS ${FRAGMENT_SHADER_FILE} ${VARYING_FILE} shaderc # <--- Added shaderc dependency
+                COMMENT "Compiling Fragment Shader: ${REL_DIR}/${FS_NAME}.sc"
+        )
+        list(APPEND SHADER_BINARIES ${FS_OUTPUT_BINARY})
+    endif()
 endforeach()
 
-# A custom target to group all shader compilation steps.
-# This target depends on the list of files we just created.
+# This creates the "Shaders" target that 'Game' is looking for.
 add_custom_target(Shaders ALL DEPENDS ${SHADER_BINARIES})
-
 
 # =========== Build Libraries ===========
 
@@ -194,6 +199,7 @@ add_dependencies(Game Shaders)
 target_include_directories(Game PRIVATE
         ${CMAKE_SOURCE_DIR}/engine
         ${CMAKE_SOURCE_DIR}/game
+        ${CMAKE_SOURCE_DIR}/3rdparty/stb/include
 )
 
 target_include_directories(imgui PUBLIC
@@ -208,7 +214,7 @@ target_include_directories(glad PUBLIC
 
 
 # =========== Linking ===========
-target_link_libraries(Game PRIVATE bgfx glfw glm assimp imgui glad Jolt)
+target_link_libraries(Game PRIVATE bgfx glfw assimp imgui glad Jolt)
 
 # Ensure the app also uses the dynamic runtime (helps if you add more targets)
 if(MSVC)

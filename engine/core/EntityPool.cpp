@@ -14,7 +14,7 @@ Entity EntityPool::create() {
     }
 
     assert(m_next < m_capacity && "Exceeded maximum number of entities!");
-    return m_next++;
+    return static_cast<Entity>(m_next++);
 }
 
 void EntityPool::destroy(Entity entity) {

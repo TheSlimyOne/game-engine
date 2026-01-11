@@ -21,7 +21,6 @@ public:
     // --- Orthographic Properties ---
     float ortho_size = 10.0f;
 
-    Mat4 get_view_matrix(Vec3 position, Vec3 forward, Vec3 up);
     Mat4 get_projection_matrix();
 };
 

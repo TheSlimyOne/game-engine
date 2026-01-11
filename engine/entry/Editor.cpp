@@ -1,8 +1,11 @@
-#include "Editor.h"
-#include "../platform/Window.h"
+// Editor.cpp
 
+#include "Editor.h"
+
+#include <platform/Window.h>
 #include <editor/PropertiesPanel.h>
 #include <editor/EntitiesPanel.h>
+#include <editor/ProfilerPanel.h>
 
 #include <iostream>
 #include <imgui.h>
@@ -52,6 +55,7 @@ void Editor::init() {
     // Initialize editor components
     m_properties_panel = std::make_unique<PropertiesPanel>();
     m_entities_panel = std::make_unique<EntitiesPanel>();
+    m_profiler_panel = std::make_unique<ProfilerPanel>();
 
     std::cout << "Editor Initialized!" << std::endl;
 
@@ -77,6 +81,7 @@ void Editor::tick() {
     // Render components
     m_properties_panel->render();
     m_entities_panel->render();
+    m_profiler_panel->render();
 
     // Rendering
     ImGui::Render();
