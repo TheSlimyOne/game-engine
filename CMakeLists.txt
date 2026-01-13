@@ -112,6 +112,7 @@ foreach(VARYING_FILE ${VARYING_FILES})
     # Find the vertex and fragment shaders in the same directory.
     file(GLOB VERTEX_SHADER_LIST "${SHADER_DIR}/vs_*.sc")
     file(GLOB FRAGMENT_SHADER_LIST "${SHADER_DIR}/fs_*.sc")
+    file(GLOB COMPUTE_SHADER_LIST  "${SHADER_DIR}/cs_*.sc")
 
     # MODIFICATION: Set the output directory to be the same as the source directory.
     set(SHADER_OUTPUT_DIR ${SHADER_DIR})
@@ -119,41 +120,30 @@ foreach(VARYING_FILE ${VARYING_FILES})
     # We still need the relative path for nice compile messages.
     file(RELATIVE_PATH REL_DIR ${MAIN_SHADER_SRC_DIR} ${SHADER_DIR})
 
-    # --- Compile Vertex Shader ---
-    # Check if we actually found a file
-    list(LENGTH VERTEX_SHADER_LIST VS_COUNT)
-    if(VS_COUNT GREATER 0)
-        # Extract the single file from the list to avoid semicolon errors
-        list(GET VERTEX_SHADER_LIST 0 VERTEX_SHADER_FILE)
+    foreach(VERTEX_SHADER_FILE ${VERTEX_SHADER_LIST})
+        get_filename_component(VS_NAME ${VERTEX_SHADER_FILE} NAME_WE)
+        set(VS_OUTPUT_BINARY "${SHADER_OUTPUT_DIR}/${VS_NAME}.bin")
 
-    get_filename_component(VS_NAME ${VERTEX_SHADER_FILE} NAME_WE)
-    set(VS_OUTPUT_BINARY "${SHADER_OUTPUT_DIR}/${VS_NAME}.bin")
-
-    add_custom_command(
-            OUTPUT ${VS_OUTPUT_BINARY}
+        add_custom_command(
+                OUTPUT ${VS_OUTPUT_BINARY}
                 # We use the target 'shaderc' here. CMake will automatically use the built executable path.
                 COMMAND shaderc
-            -f ${VERTEX_SHADER_FILE}
-            -o ${VS_OUTPUT_BINARY}
-            --type vertex
+                -f ${VERTEX_SHADER_FILE}
+                -o ${VS_OUTPUT_BINARY}
+                --type vertex
                 --varyingdef ${VARYING_FILE} # <--- THIS FIXES YOUR ERROR
                 --platform windows
                 --profile vs_5_0
                 -i ${bgfx_SOURCE_DIR}/bgfx/src
                 DEPENDS ${VERTEX_SHADER_FILE} ${VARYING_FILE} shaderc # <--- Added shaderc dependency
-            COMMENT "Compiling Vertex Shader: ${REL_DIR}/${VS_NAME}.sc"
-    )
-    list(APPEND SHADER_BINARIES ${VS_OUTPUT_BINARY})
-    endif()
+                COMMENT "Compiling Vertex Shader: ${REL_DIR}/${VS_NAME}.sc"
+        )
+        list(APPEND SHADER_BINARIES ${VS_OUTPUT_BINARY})
+    endforeach()
 
-    # --- Compile Fragment Shader ---
-    list(LENGTH FRAGMENT_SHADER_LIST FS_COUNT)
-    if(FS_COUNT GREATER 0)
-        # Extract single file
-        list(GET FRAGMENT_SHADER_LIST 0 FRAGMENT_SHADER_FILE)
-
-    get_filename_component(FS_NAME ${FRAGMENT_SHADER_FILE} NAME_WE)
-    set(FS_OUTPUT_BINARY "${SHADER_OUTPUT_DIR}/${FS_NAME}.bin")
+    foreach(FRAGMENT_SHADER_FILE ${FRAGMENT_SHADER_LIST})
+        get_filename_component(FS_NAME ${FRAGMENT_SHADER_FILE} NAME_WE)
+        set(FS_OUTPUT_BINARY "${SHADER_OUTPUT_DIR}/${FS_NAME}.bin")
 
         add_custom_command(
                 OUTPUT ${FS_OUTPUT_BINARY}
@@ -169,7 +159,28 @@ foreach(VARYING_FILE ${VARYING_FILES})
                 COMMENT "Compiling Fragment Shader: ${REL_DIR}/${FS_NAME}.sc"
         )
         list(APPEND SHADER_BINARIES ${FS_OUTPUT_BINARY})
-    endif()
+    endforeach()
+
+    foreach(COMPUTE_SHADER_FILE ${COMPUTE_SHADER_LIST})
+        get_filename_component(CS_NAME ${COMPUTE_SHADER_FILE} NAME_WE)
+        set(CS_OUTPUT_BINARY "${SHADER_OUTPUT_DIR}/${CS_NAME}.bin")
+
+        add_custom_command(
+                OUTPUT ${CS_OUTPUT_BINARY}
+                COMMAND shaderc
+                -f ${COMPUTE_SHADER_FILE}
+                -o ${CS_OUTPUT_BINARY}
+                --type compute
+                --varyingdef ${VARYING_FILE}
+                --platform windows
+                --profile ps_5_0
+                -i ${bgfx_SOURCE_DIR}/bgfx/src
+                DEPENDS ${COMPUTE_SHADER_FILE} ${VARYING_FILE} shaderc
+                COMMENT "Compiling Compute Shader: ${REL_DIR}/${CS_NAME}.sc"
+        )
+        list(APPEND SHADER_BINARIES ${CS_OUTPUT_BINARY})
+    endforeach()
+
 endforeach()
 
 # This creates the "Shaders" target that 'Game' is looking for.
@@ -202,7 +213,9 @@ file(GLOB_RECURSE SRC_FILES
         ${CMAKE_SOURCE_DIR}/game/*.cpp
 )
 
-add_executable(Game main.cpp ${SRC_FILES})
+add_executable(Game main.cpp ${SRC_FILES}
+        game/PlanetRenderingPipeline.cpp
+        game/PlanetRenderingPipeline.h)
 
 # Make the Game executable depend on the shaders being compiled first.
 add_dependencies(Game Shaders)
