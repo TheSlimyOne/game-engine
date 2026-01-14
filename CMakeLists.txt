@@ -173,7 +173,7 @@ foreach(VARYING_FILE ${VARYING_FILES})
                 --type compute
                 --varyingdef ${VARYING_FILE}
                 --platform windows
-                --profile ps_5_0
+                --profile cs_5_0
                 -i ${bgfx_SOURCE_DIR}/bgfx/src
                 DEPENDS ${COMPUTE_SHADER_FILE} ${VARYING_FILE} shaderc
                 COMMENT "Compiling Compute Shader: ${REL_DIR}/${CS_NAME}.sc"
@@ -213,9 +213,7 @@ file(GLOB_RECURSE SRC_FILES
         ${CMAKE_SOURCE_DIR}/game/*.cpp
 )
 
-add_executable(Game main.cpp ${SRC_FILES}
-        game/PlanetRenderingPipeline.cpp
-        game/PlanetRenderingPipeline.h)
+add_executable(Game main.cpp ${SRC_FILES})
 
 # Make the Game executable depend on the shaders being compiled first.
 add_dependencies(Game Shaders)

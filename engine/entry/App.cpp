@@ -6,6 +6,8 @@
 #include <iostream>
 #include <profiler/Profiler.h>
 
+#include "../../game/ComputeTest.h"
+
 App::App(const std::shared_ptr<World> &world)
     : m_world(world)
 {}
@@ -43,7 +45,7 @@ void App::init() {
     std::cout << "App Initialized!" << std::endl;
     m_initialized = true;
 }
-
+ComputeTest a;
 void App::tick() {
     //Initialize the app
     if (!m_initialized) {
@@ -105,7 +107,7 @@ void App::tick() {
         );
     }
 
-
+    a.Update();
 
     // 6. Draw the frame
     {

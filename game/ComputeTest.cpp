@@ -41,7 +41,7 @@ void ComputeTest::Initialize()
     if (m_initialized)
         return;
 
-    const std::filesystem::path shaders = ROOT / "shaders/test_shader";
+    const std::filesystem::path shaders = ROOT / "shaders/compute_shader_test";
 
     m_computeProgram = bgfx::createProgram(
        LoadShader((shaders / "cs_test_shader.bin").string()),
