@@ -45,7 +45,7 @@ void App::init() {
     std::cout << "App Initialized!" << std::endl;
     m_initialized = true;
 }
-ComputeTest a;
+
 void App::tick() {
     //Initialize the app
     if (!m_initialized) {
@@ -106,8 +106,6 @@ void App::tick() {
             FIXED_DT
         );
     }
-
-    a.Update();
 
     // 6. Draw the frame
     {

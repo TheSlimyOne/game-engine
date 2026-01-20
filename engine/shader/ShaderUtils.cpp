@@ -3,6 +3,7 @@
 #include "ShaderUtils.h"
 
 
+#include <chrono>
 #include <fstream>
 #include <iostream>
 #include <vector>
@@ -36,6 +37,22 @@ bgfx::ShaderHandle load_shader_bin(const std::string& file_path)
     return bgfx::createShader(mem);
 }
 
+bgfx::ProgramHandle load_compute_shader(const std::string& cs_path,  bool destroyShaders)
+{
+    auto csh = load_shader_bin(cs_path);
+    if (!bgfx::isValid(csh)) {
+        std::cerr << "Program shaders invalid: CS=" << cs_path << std::endl;
+        return BGFX_INVALID_HANDLE;
+    }
+
+    bgfx::ProgramHandle prog = bgfx::createProgram(csh, destroyShaders);
+    if (!bgfx::isValid(prog)) {
+        bgfx::destroy(csh);
+        std::cerr << "Failed to create program: VS=" << cs_path << std::endl;
+    }
+    return prog;
+}
+
 bgfx::ProgramHandle load_program(const std::string& vs_path, const std::string& fs_path, bool destroyShaders) {
     auto vsh = load_shader_bin(vs_path);
     auto fsh = load_shader_bin(fs_path);
@@ -55,6 +72,15 @@ bgfx::ProgramHandle load_program(const std::string& vs_path, const std::string& 
                   << " FS=" << fs_path << std::endl;
     }
     return prog;
+}
+
+float* get_time_uniform()
+{
+    static const auto t0 = std::chrono::high_resolution_clock::now();
+    const auto now = std::chrono::high_resolution_clock::now();
+    const float seconds = std::chrono::duration<float>(now - t0).count();
+    static float timeVec4[4] = { seconds, 0.0f, 0.0f, 0.0f };
+    return timeVec4;
 }
 
 } // namespace ShaderUtils

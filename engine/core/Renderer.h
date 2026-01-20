@@ -79,6 +79,8 @@ public:
 
     // Main entry point to render one frame.
     void draw_frame(World& world);
+
+    [[nodiscard]] uint32_t get_current_frame() const;
     // ================================================================ //
 
 private:
@@ -115,6 +117,7 @@ private:
     int32_t m_width       = 0;
     int32_t m_height      = 0;
     double  m_last_dt     = 0.0;
+    uint32_t currentFrame = 0;
 
     PickState              m_pickState;
     std::vector<uint8_t>   m_pickBuffer; // width * height * 4 bytes

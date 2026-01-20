@@ -1,0 +1,284 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <title>Desmos Test</title>
+    <script src="https://www.desmos.com/api/v1.11/calculator.js?apiKey=bf07d374361a4d3c9ad53e125a242a29"></script>
+    <style>
+        #calculator {
+            position: absolute;
+            top: 0;
+            left: 0;
+            bottom: 0;
+            right: 0;
+            transition: opacity .3s;
+            overflow: hidden;
+        }
+
+    </style>
+</head>
+<body>
+<div id="calculator"></div>
+<script>
+    function float2(x, y) { return { x: +x, y: +y }; }
+    function float3(x, y, z) { return { x: +x, y: +y, z: +z }; }
+    function mat3() { return { v: [float3(0,0,0), float3(0,0,0), float3(0,0,0)] }; }
+
+    function sub2(a, b) { return { x: a.x - b.x, y: a.y - b.y }; }
+    function add2(a, b) { return { x: a.x + b.x, y: a.y + b.y }; }
+    function sub3(a, b) { return { x: a.x - b.x, y: a.y - b.y, z: a.z - b.z }; }
+    function add3(a, b) { return { x: a.x + b.x, y: a.y + b.y, z: a.z + b.z }; }
+
+
+    function mulMat3Vec3(m, p) {
+        return {
+            x: m.v[0].x * p.x + m.v[0].y * p.y + m.v[0].z * p.z,
+            y: m.v[1].x * p.x + m.v[1].y * p.y + m.v[1].z * p.z,
+            z: m.v[2].x * p.x + m.v[2].y * p.y + m.v[2].z * p.z,
+        };
+    }
+    function padZeros(str, width) {
+        return str.padStart(width, "0");
+    }
+</script>
+<script>
+    class TessKey {
+        /**
+         * @param {bigint|number|string} data  uint64 payload (use BigInt-safe input)
+         * @param {number} meshPolygonID
+         * @param {number} meshData
+         */
+        constructor(data, meshPolygonID, meshData) {
+            this.data = (typeof data === "bigint") ? data : BigInt(data);
+            this.meshPolygonID = meshPolygonID >>> 0;
+            this.meshData = meshData >>> 0;
+        }
+
+        get flags() { return this.meshData >>> 29; }   // top 3 bits
+        get rootID() { return this.meshData & 0xF; }   // low 4 bits
+
+        get msb32() { return Number((this.data >> 32n) & 0xFFFF_FFFFn); }
+        get lsb32() { return Number(this.data & 0xFFFF_FFFFn); }
+
+
+        // --------- Functions ---------
+        toString() {
+            const msbBin = padZeros(this.msb32.toString(2), 32);
+            const lsbBin = padZeros(this.lsb32.toString(2), 32);
+            const flagsBin = padZeros(this.flags.toString(2), 3);
+
+            return `${msbBin}, ${lsbBin}, ${this.meshPolygonID}, ${this.rootID}, ${flagsBin}`;
+        }
+        leafSpaceToQuadtreeSpace() {
+            const msbIndex = this.getMostSignificantBit();
+            let translation = float2(0, 0);
+
+            let theta = 0;
+            let scale = 1.0;
+
+            for (let i = 0; i < Math.floor(msbIndex / 2); i++) {
+                const b1b2 = this.getBranching(i);
+                const b1 = b1b2 >> 1;
+
+                // temp = scale * GetTranslation(b1) * 0.5
+                const t = TessKey.getTranslation(b1);
+                const temp = float2(t.x * scale * 0.5, t.y * scale * 0.5);
+
+                const rotated = TessKey.rotate(theta, temp);
+                translation = float2(translation.x + rotated.x, translation.y + rotated.y);
+
+                theta += TessKey.getRotation(b1b2);
+                scale *= 0.5;
+            }
+
+            const trig = TessKey.quickPI2(theta);
+
+            const quadtreeSpace = mat3();
+            quadtreeSpace.v[0] = float3(trig.x * scale, -trig.y * scale, translation.x);
+            quadtreeSpace.v[1] = float3(trig.y * scale,  trig.x * scale, translation.y);
+            quadtreeSpace.v[2] = float3(0, 0, 1);
+
+            return quadtreeSpace;
+        }
+
+        quadtreeSpaceToPolygonSpace(v1, v2, v3)
+        {
+            const polygonSpace = mat3();
+            polygonSpace.v[0] = sub3(v3, v2);
+            polygonSpace.v[0] = sub3(v1, v2);
+            polygonSpace.v[0] = v2;
+
+            return polygonSpace;
+        }
+        createTriangle(v1, v2, v3) {
+            const quadtreeSpace = this.leafSpaceToQuadtreeSpace();
+            const pointA = mulMat3Vec3(quadtreeSpace, float3(0, 0, 1));
+            const pointB = mulMat3Vec3(quadtreeSpace, float3(1, 0, 1));
+            const pointC = mulMat3Vec3(quadtreeSpace, float3(0, 1, 1));
+
+            const polygonSpace = this.quadtreeSpaceToPolygonSpace(v1, v2, v3);
+            const trianglePointA = mulMat3Vec3(polygonSpace, v1);
+            const trianglePointB = mulMat3Vec3(polygonSpace, v2);
+            const trianglePointC = mulMat3Vec3(polygonSpace, v3);
+
+            return [pointA, pointB, pointC];
+            // const base
+        }
+
+        getMostSignificantBit() {
+            let x = this.data;
+            let msbIndex = 0;
+
+            while (x > 1n) {
+                x >>= 1n;
+                msbIndex++;
+            }
+            return msbIndex;
+        }
+
+        getBranching(level) {
+            const shiftAmount = this.getMostSignificantBit() - 2 - (level * 2);
+            if (shiftAmount < 0) return 0;
+
+            const v = (this.data >> BigInt(shiftAmount)) & 0x3n;
+            return Number(v); // 0..3
+        }
+
+        static getTranslation(b1) {
+            return float2((b1 & 0x1) >>> 0, (b1 ^ 0x1) >>> 0);
+        }
+
+        static rotate(rotationIndex, translation) {
+            const trig = TessKey.quickPI2(rotationIndex);
+            return float2(
+                trig.x * translation.x - trig.y * translation.y,
+                trig.y * translation.x + trig.x * translation.y
+            );
+        }
+
+        static getRotation(b1b2) {
+            const b1 = b1b2 >> 1;
+            const b2 = b1b2 & 1;
+
+            const a = b1b2 ^ 0x2;
+            const b = a | 0x1;
+            const c = b1 ^ b2;
+            return b * c;
+        }
+
+        static quickPI2(a) {
+            const b = a & 3;
+            const b1 = b >> 1;
+            const b2 = b & 1;
+            const bn2 = b2 ^ 1;
+            const c = bn2 - (2 * (b1 & bn2));
+            const s = b2 - (2 * (b1 & b2));
+            return float2(c, s);
+        }
+    }
+
+</script>
+<script>
+    let elt = document.getElementById('calculator');
+    let calculator = Desmos.GraphingCalculator(elt, {
+        // expressions: false
+    });
+
+    calculator.setMathBounds({
+        left: -0.3,
+        right: 1.3,
+        top: 1.3,
+        bottom: -0.3
+    })
+
+
+    colors = {
+        0: "#c74440",
+        1: "#2d70b3",
+        2: "#388c46",
+        3: "#000000",
+        4: "#ffe94d"
+    }
+
+    function f(x) {
+        return Number(x).toLocaleString("en-US", {
+            useGrouping: false,
+            maximumFractionDigits: 20
+        });
+    }
+
+    function writeTriangle(key, id, color, lineStyle="", lines=false, fill=true)
+    {
+        let triangle = key.createTriangle(float3(0,0,0), float3(1,0,0), float3(0,1,0));
+        expr = {
+            id: id,
+            latex: `\\operatorname{polygon}(`+
+                `(${f(triangle[0].x)},${f(triangle[0].y)}),` +
+                `(${f(triangle[1].x)},${f(triangle[1].y)}),` +
+                `(${f(triangle[2].x)},${f(triangle[2].y)}))`,
+            color: color,
+            fill: fill,
+            lines: lines
+        }
+
+        lineStyle !== "" && (expr.lineStyle = lineStyle);
+
+        calculator.setExpression(expr);
+    }
+
+    function TraceKey(keyIdList, id)
+    {
+        if (keyIdList.length === 0)
+            return
+
+        const keyId = [1, ...keyIdList].reverse().reduce((acc, v, i) => BigInt(acc) + BigInt(v) * 4n ** BigInt(i), 0);
+        console.log(`Fetching Key: ${keyId}b4 iterations`)
+        console.log(keyId.toString(4).padStart(64, "0"))
+
+
+        for (let i = 0; i < keyIdList.length; i++)
+        {
+            const parentId = keyId >> BigInt(2 * (keyIdList.length - 1 - i));
+            const baseParentId = parentId - parentId % 4n;
+
+            for (let j = 0; j < 4; j++)
+            {
+
+                const childKey = new TessKey(baseParentId + BigInt(j), 0, 0)
+                const isParent = keyIdList[i] === j
+                const isTarget = keyId === childKey.data;
+
+                const lineStyle =  isParent ? "DOTTED" : "";
+
+                writeTriangle(
+                    childKey,
+                    `root_triangle_${childKey.data}_${id}`,
+                    colors[isTarget ? 4 : j % 4],
+                    lineStyle,
+                    isParent,
+                    !isParent || isTarget
+                )
+
+                // console.log(childKey.toString())
+
+                // writeTriangle(childKey, baseParentId + BigInt(j), colors[j % 4])
+            }
+
+        }
+    }
+
+    // TraceKey([3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3])
+    TraceKey([0], "a")
+    TraceKey([1], "b")
+    TraceKey([2], "c")
+    TraceKey([3], "d")
+    // TraceKey([1, 1], "b")
+    // TraceKey([1, 2], "c")
+    // TraceKey([1, 3], "d")
+    // TraceKey([3])
+
+
+
+</script>
+</body>
+</html>

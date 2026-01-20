@@ -11,6 +11,7 @@ struct Vec2;
 struct Vec3;
 struct Vec4;
 struct Quat;
+struct Mat3;
 struct Mat4;
 
 static const float PI = 3.14159265358979323846f;

@@ -19,6 +19,7 @@
 #include <bgfx/platform.h>
 #include "GLFW/glfw3.h"
 #include <core/Paths.h>
+#include "PlanetGame/PlanetRenderingPipeline.h"
 
 namespace
 {
@@ -95,6 +96,11 @@ bool Renderer::init(Window* window) {
     return true;
 }
 
+uint32_t Renderer::get_current_frame() const
+{
+    return currentFrame;
+}
+
 void Renderer::shutdown() {
     if (!m_initialized) {
         return;
@@ -140,7 +146,7 @@ void Renderer::begin_frame() {
 }
 
 void Renderer::end_frame(World& world) {
-    uint32_t currentFrame = bgfx::frame();
+    currentFrame = bgfx::frame();
 
     if (m_pickState.pendingReadback &&
         currentFrame >= m_pickState.readyFrame &&
@@ -166,7 +172,7 @@ void Renderer::end_frame(World& world) {
         }
     }
 }
-
+PlanetRenderingPipeline planet_rendering_pipeline;
 void Renderer::draw_frame(World &world) {
     Entity active_camera = world.get_active_camera();
     if (!active_camera) {
@@ -176,6 +182,8 @@ void Renderer::draw_frame(World &world) {
 
     // 1) Render the 3D scene into an off-screen framebuffer (color + depth).
     render_scene(world, active_camera);
+
+    planet_rendering_pipeline.dispatch_compute();
 
     // 2) Render a black-and-white mask of selected entities into a separate RT.
     render_selection_mask(world, active_camera);
@@ -199,6 +207,7 @@ bool Renderer::init_bgfx(Window* window) {
     // 2) Configure BGFX renderer and resolution.
     bgfx::Init init{};
     init.type      = bgfx::RendererType::Direct3D12;
+    init.platformData = pd;
     init.vendorId  = BGFX_PCI_ID_NONE;
     init.resolution.width  = static_cast<uint32_t>(m_width);
     init.resolution.height = static_cast<uint32_t>(m_height);

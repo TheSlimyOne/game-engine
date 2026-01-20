@@ -7,7 +7,7 @@ project(Game)
 # Use dynamic MSVC runtime: /MD (Release) and /MDd (Debug)
 set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>DLL")
 
-set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
@@ -31,7 +31,19 @@ set(MSVC_STATIC_RUNTIME OFF CACHE BOOL "Use dynamic runtime for Jolt")
 # bgfx
 FetchContent_Declare(
     bgfx
-    GIT_REPOSITORY https://github.com/widberg/bgfx.cmake.git
+    GIT_REPOSITORY https://github.com/bkaradzic/bgfx.cmake.git
+    GIT_TAG master
+)
+
+FetchContent_Declare(
+    bimg
+    GIT_REPOSITORY https://github.com/bkaradzic/bimg.git
+    GIT_TAG master
+)
+
+FetchContent_Declare(
+    bx
+    GIT_REPOSITORY https://github.com/bkaradzic/bx.git
     GIT_TAG master
 )
 
@@ -64,7 +76,7 @@ FetchContent_Declare(
     SOURCE_SUBDIR Build
 )
 
-FetchContent_MakeAvailable(bgfx glfw assimp imgui joltphysics)
+FetchContent_MakeAvailable(bgfx bx bimg glfw assimp imgui joltphysics)
 
 # Add Jolt explicitly so our cache options apply and we can tweak its target
 FetchContent_GetProperties(joltphysics)
@@ -133,7 +145,7 @@ foreach(VARYING_FILE ${VARYING_FILES})
                 --type vertex
                 --varyingdef ${VARYING_FILE} # <--- THIS FIXES YOUR ERROR
                 --platform windows
-                --profile vs_5_0
+                --profile s_5_0
                 -i ${bgfx_SOURCE_DIR}/bgfx/src
                 DEPENDS ${VERTEX_SHADER_FILE} ${VARYING_FILE} shaderc # <--- Added shaderc dependency
                 COMMENT "Compiling Vertex Shader: ${REL_DIR}/${VS_NAME}.sc"
@@ -153,7 +165,7 @@ foreach(VARYING_FILE ${VARYING_FILES})
                 --type fragment
                 --varyingdef ${VARYING_FILE} # <--- THIS FIXES YOUR ERROR
                 --platform windows
-                --profile ps_5_0
+                --profile s_5_0
                 -i ${bgfx_SOURCE_DIR}/bgfx/src
                 DEPENDS ${FRAGMENT_SHADER_FILE} ${VARYING_FILE} shaderc # <--- Added shaderc dependency
                 COMMENT "Compiling Fragment Shader: ${REL_DIR}/${FS_NAME}.sc"
@@ -173,7 +185,7 @@ foreach(VARYING_FILE ${VARYING_FILES})
                 --type compute
                 --varyingdef ${VARYING_FILE}
                 --platform windows
-                --profile cs_5_0
+                --profile s_5_0
                 -i ${bgfx_SOURCE_DIR}/bgfx/src
                 DEPENDS ${COMPUTE_SHADER_FILE} ${VARYING_FILE} shaderc
                 COMMENT "Compiling Compute Shader: ${REL_DIR}/${CS_NAME}.sc"
@@ -213,7 +225,11 @@ file(GLOB_RECURSE SRC_FILES
         ${CMAKE_SOURCE_DIR}/game/*.cpp
 )
 
-add_executable(Game main.cpp ${SRC_FILES})
+add_executable(Game main.cpp ${SRC_FILES}
+        game/PlanetGame/PlanetRenderingPipeline.cpp
+        game/PlanetGame/PlanetRenderingPipeline.h
+        game/PlanetGame/TessKey.cpp
+        game/PlanetGame/TessKey.h)
 
 # Make the Game executable depend on the shaders being compiled first.
 add_dependencies(Game Shaders)
@@ -241,7 +257,7 @@ target_include_directories(glad PUBLIC
 add_compile_definitions(GAME_ENGINE_ROOT="${CMAKE_SOURCE_DIR}")
 
 # =========== Linking ===========
-target_link_libraries(Game PRIVATE bgfx glfw assimp imgui glad Jolt)
+target_link_libraries(Game PRIVATE bgfx bx bimg glfw assimp imgui glad Jolt)
 
 # Ensure the app also uses the dynamic runtime (helps if you add more targets)
 if(MSVC)

@@ -13,6 +13,12 @@ namespace ShaderUtils {
     // Convenience helper to create a program from vs/fs paths.
     // If creation fails, returns BGFX_INVALID_HANDLE.
     bgfx::ProgramHandle load_program(const std::string& vs_path, const std::string& fs_path, bool destroyShaders = true);
+
+    // Convenience helper to create a program from cs paths.
+    // If creation fails, returns BGFX_INVALID_HANDLE.
+    bgfx::ProgramHandle load_compute_shader(const std::string& cs_path,  bool destroyShaders);
+
+    float* get_time_uniform();
 }
 
 #endif //GAME_SHADERUTILS_H
